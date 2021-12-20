@@ -18,8 +18,8 @@ void updateBar(int percent) {
 void time_str(char* time, clock_t diff) {
     int msec = diff * 1000 / CLOCKS_PER_SEC;
     int milli   = msec % 1000;
-    int seconds = msec / 1000;
-    int minutes = seconds / 60;
+    int seconds = (msec / 1000) % 1000;
+    int minutes = (seconds / 60) % 60;
     int hours   = minutes / 60;
 
     if (hours > 0) sprintf(time, "%dh %dm", hours, minutes);
