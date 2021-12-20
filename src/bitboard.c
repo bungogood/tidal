@@ -140,40 +140,35 @@ const U64 bMagics[64] = {
 
 SMagic bishopMagics[64];
 SMagic rookMagics  [64];
+PawnInfo pawnInfo[2];
 
-U64 pawnAttacks  [2][64];
 U64 kingAttacks  [64];
 U64 knightAttacks[64];
 U64 bishopAttacks[64] [512]; // 256 K
 U64 rookAttacks  [64][4096]; // 2048K
 
-U64 rowMask = 0xffULL;
-U64 colMask = 0x0101010101010101ULL;
+const U64 Rank1 = 0x00000000000000ffULL;
+const U64 Rank2 = 0x000000000000ff00ULL;
+const U64 Rank3 = 0x0000000000ff0000ULL;
+const U64 Rank4 = 0x00000000ff000000ULL;
+const U64 Rank5 = 0x000000ff00000000ULL;
+const U64 Rank6 = 0x0000ff0000000000ULL;
+const U64 Rank7 = 0x00ff000000000000ULL;
+const U64 Rank8 = 0xff00000000000000ULL;
 
-U64 bitboards[12]; // piece bitboards
-U64 occupancy[3];
-
-int isWhite;
-int enPassant;
-int castling;  // KQkq
+const U64 FileA = 0x0101010101010101ULL;
+const U64 FileB = 0x0202020202020202ULL;
+const U64 FileC = 0x0404040404040404ULL;
+const U64 FileD = 0x0808080808080808ULL;
+const U64 FileE = 0x1010101010101010ULL;
+const U64 FileF = 0x2020202020202020ULL;
+const U64 FileG = 0x4040404040404040ULL;
+const U64 FileH = 0x8080808080808080ULL;
 
 int countBits(U64 bb) {
-    int count = 0;
-    while (bb != 0) {
-        bb &= bb - 1;
-        count++;
-    }
+    int count;
+    for (count=0; bb; count++) bb &= bb - 1;
     return count;
-}
-
-int _countBits(U64 bb) {
-    bb = bb - ((bb >> 1) & 0x5555555555555555ULL);
-    bb = (bb & 0x3333333333333333ULL) + ((bb >> 2) & 0x3333333333333333ULL);
-    bb = (bb + (bb >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
-    bb = bb + (bb >> 8);
-    bb = bb + (bb >> 16);
-    bb = bb + (bb >> 32);
-    return (int)bb & 0x7f;
 }
 
 int getLSB(U64 bb) { // returns index of LSB
@@ -213,26 +208,39 @@ U64 maskPerm(int index, int bits, U64 m) {
     return result;
 }
 
-void initPawnAttack() {
+void initPawnInfo() {
     /*
     * | 7 |   | 9 |
     * |   | i |   |
     * |-9 |   |-7 |
     */
-    U64 AFile = colMask << FA;
-    U64 HFile = colMask << FH;
+    pawnInfo[white].secondRank  = Rank2;
+    pawnInfo[black].secondRank  = Rank7;
+
+    pawnInfo[white].promoteRank = Rank7;
+    pawnInfo[black].promoteRank = Rank2;
 
     for (int sq = 0; sq < 64; sq++) {
         U64 set = 1ULL << sq;
 
-        if ((set & HFile) == 0) {
-            pawnAttacks[black][sq] |= set >> 7;
-            pawnAttacks[white][sq] |= set << 9;
+        pawnInfo[white].singleMove[sq] = sq + 8;
+        pawnInfo[white].singleMask[sq] = set << 8;
+        pawnInfo[black].singleMove[sq] = sq - 8;
+        pawnInfo[black].singleMask[sq] = set >> 8;
+        if ((set & FileH) == 0) {
+            pawnInfo[black].attacks[sq] |= set >> 7;
+            pawnInfo[white].attacks[sq] |= set << 9;
         }
-        if ((set & AFile) == 0) {
-            pawnAttacks[black][sq] |= set >> 9;
-            pawnAttacks[white][sq] |= set << 7;
+        if ((set & FileA) == 0) {
+            pawnInfo[black].attacks[sq] |= set >> 9;
+            pawnInfo[white].attacks[sq] |= set << 7;
         }
+    }
+    for (int i = 0; i < 8; i++) {
+        pawnInfo[white].doubleMove[i] = (i + 24);
+        pawnInfo[white].doubleMask[i] = 1ULL << (i + 24);
+        pawnInfo[black].doubleMove[i] = (i + 32);
+        pawnInfo[black].doubleMask[i] = 1ULL << (i + 32);
     }
 }
 
@@ -242,16 +250,13 @@ void initKingAttack() {
     * |-1 | i | 1 |
     * |-9 |-8 |-7 |
     */
-    U64 AFile = colMask << FA;
-    U64 HFile = colMask << FH;
-
     for (int sq = 0; sq < 64; sq++) {
         U64 set = 1ULL << sq;
 
         kingAttacks[sq] = set >> 8 | set << 8;
 
-        if ((set & HFile) == 0) kingAttacks[sq] |= set << 9 | set << 1 | set >> 7;
-        if ((set & AFile) == 0) kingAttacks[sq] |= set >> 9 | set >> 1 | set << 7;
+        if ((set & FileH) == 0) kingAttacks[sq] |= set << 9 | set << 1 | set >> 7;
+        if ((set & FileA) == 0) kingAttacks[sq] |= set >> 9 | set >> 1 | set << 7;
     }
 }
 
@@ -263,20 +268,18 @@ void initKnightAttack() {
     * -10|   |   |   | -6
     *    |-17|   |-15|
     */
-    U64 AFile = colMask << FA;
-    U64 HFile = colMask << FH;
-    U64 ABFile = colMask << FA | colMask << FB;
-    U64 GHFile = colMask << FG | colMask << FH;
+    U64 FileAB = FileA | FileB;
+    U64 FileGH = FileG | FileH;
 
     for (int sq = 0; sq < 64; sq++) {
         U64 set = 1ULL << sq;
 
         knightAttacks[sq] = 0;
 
-        if ((set & AFile) == 0)  knightAttacks[sq] |= set << 15 | set >> 17;
-        if ((set & ABFile) == 0) knightAttacks[sq] |= set <<  6 | set >> 10;
-        if ((set & HFile) == 0)  knightAttacks[sq] |= set << 17 | set >> 15;
-        if ((set & GHFile) == 0) knightAttacks[sq] |= set << 10 | set >>  6;
+        if ((set & FileA) == 0)  knightAttacks[sq] |= set << 15 | set >> 17;
+        if ((set & FileAB) == 0) knightAttacks[sq] |= set <<  6 | set >> 10;
+        if ((set & FileH) == 0)  knightAttacks[sq] |= set << 17 | set >> 15;
+        if ((set & FileGH) == 0) knightAttacks[sq] |= set << 10 | set >>  6;
     }
 }
 
@@ -379,29 +382,8 @@ void initBishopAttack() {
     }
 }
 
-// static inline
-
-U64 get_rook_attack(int sq, U64 occ) {
-    occ  &= rookMagics[sq].mask;
-    occ  *= rookMagics[sq].magic;
-    occ >>= 64 - rookMagics[sq].shift;
-    return rookAttacks[sq][occ];
-}
-
-U64 get_bishop_attack(int sq, U64 occ) {
-    occ  &= bishopMagics[sq].mask;
-    occ  *= bishopMagics[sq].magic;
-    occ >>= 64 - bishopMagics[sq].shift;
-    return bishopAttacks[sq][occ];
-}
-
-// could split out
-U64 get_queen_attack(int sq, U64 occ) {
-    return get_bishop_attack(sq, occ) | get_rook_attack(sq, occ);
-}
-
 void init_attacks() {
-    initPawnAttack();
+    initPawnInfo();
     initKingAttack();
     initKnightAttack();
     initRookAttack();

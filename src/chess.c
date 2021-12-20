@@ -1,6 +1,8 @@
 #include <chess.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
 
 const char* player_str[] = { "Black", "White" };
 
@@ -47,10 +49,11 @@ const void print_bb(const U64 bb) {
             if ((bb & (1ULL << (r*8+c))) != 0) printf("1 ");
             else printf(". ");
         }
+        if (r == 6) printf("\tdec: %llu", bb);
+        if (r == 5) printf("\thex: 0x%llx", bb);
         printf("\n");
     }
     printf("   A B C D E F G H\n\n");
-    printf("num: %llu\n\n", bb);
 }
 
 const int get_piece(const int sq, const Board* board) {
@@ -151,8 +154,7 @@ void to_fen(char* fen, const Board* board) {
     sprintf(fen, "%d %d", board->halfMove, board->fullMove);
 }
 
-Board* from_fen(const char* fen) {
-    Board* board = (Board*)malloc(sizeof(Board));
+void from_fen(const char* fen, Board* board) {
 
     for (int piece = P; piece <= k; piece++) board->bb[piece] = 0;
     
@@ -207,11 +209,112 @@ Board* from_fen(const char* fen) {
     board->fullMove = atoi(fen);
     
     for (int player = black; player < both; player++) board->occ[player] = 0;
-    for (int piece = P; piece <= k; piece++) {
-        board->occ[piece / p] |= board->bb[piece];
-    }
+    for (int piece = P; piece <= K; piece++) board->occ[white] |= board->bb[piece];
+    for (int piece = p; piece <= k; piece++) board->occ[black] |= board->bb[piece];
 
     board->occ[both] = board->occ[black] | board->occ[white];
-    
+}
+
+Board* create_from_fen(const char* fen) {
+    Board* board = (Board*)malloc(sizeof(Board));
+    from_fen(fen, board);
     return board;
 }
+/*
+void to_san(char* san, int move, const Board* board) {
+    Moves* moves = &board->moves;
+    int src = get_move_source(move);
+    int dest = get_move_target(move);
+    int piece = get_move_piece(move);
+    int promoted = get_move_promoted(move);
+    bool sameRank = false, sameFile = false;
+    if (get_move_castling(move)) {
+        if (dest == g1 | dest == g8) printf("O-O\n");
+        if (dest == c1 | dest == c8) printf("O-O-O\n");
+        return;
+    }
+    for (int i = 0; i < moves->count; i++) {
+        if (move != moves->moves[i] && 
+            piece == get_move_piece(moves->moves[i]) && 
+            dest == get_move_target(moves->moves[i])) {
+            printf("rep: ");
+            print_move(moves->moves[i]);
+            int other = get_move_source(moves->moves[i]);
+            if (src / 8 == other / 8) sameRank = true;
+            if (src % 8 == other % 8) sameFile = true;
+        }
+    }
+
+    if (piece != P && piece != p) printf("%c", ascii_piece[piece]);
+
+    if (sameFile) printf("%c", 'a' + src % 8);
+    if (sameRank) printf("%c", '1' + src / 8);
+
+    if (get_move_capture(move)) printf("x");
+
+    printf("%s", sq_str[dest]);
+
+    if (promoted) printf("%c", ascii_piece[promoted]);
+
+    printf("\n");
+}
+*/
+
+#define encode_move(source, target, piece, promoted, capture, double, enpassant, castling) \
+    (source) |          \
+    (target << 6) |     \
+    (piece << 12) |     \
+    (promoted << 16) |  \
+    (capture << 20) |   \
+    (double << 21) |    \
+    (enpassant << 22) | \
+    (castling << 23) \
+
+int from_san(const char* san, const Board* board) {
+    // check for castles
+    // if first is a capital then
+    int piece = *san;
+    int src, dest;
+    int rank = -1;
+    int file = -1;
+    
+    if ('A' <= piece && piece <= 'Z') {
+        piece = board->isWhite ? chr_piece(piece) : chr_piece(piece)+p;
+        san++;
+    } else piece = board->isWhite ? P : p;
+
+    file = *san++ - 'a';
+    rank = *san++ - '1';
+    src = rank*8 + file;
+
+    file = *san++ - 'a';
+    rank = *san++ - '1';
+    dest = rank*8 + file;
+    
+    // is !board->isWhite then make lower case
+    // if no piece then pawn
+    
+    // if both rank and file known easy
+    // if both rank and file unknown easy
+    /*
+    for (int i = 0; i < moves->count; i++) {
+        if (piece == get_move_piece(moves->moves[i]) &&
+            dest  == get_move_target(moves->moves[i])) {
+            int other = get_move_target(moves->moves[i]);
+            // assume true
+            if (rank == -1 && file == -1) {
+                dest = other;
+                break;
+            } else if (rank == -1 && other / 8 == rank)
+            printf("rep: ");
+            print_move(moves->moves[i]);
+            int other = get_move_source(moves->moves[i]);
+            // if (src / 8 == other / 8) sameRank = true;
+            // if (src % 8 == other % 8) sameFile = true;
+        }
+    }
+    */
+    // look for x
+    return encode_move(src, dest, piece, false, false, false, false, false);
+}
+

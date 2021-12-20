@@ -10,7 +10,7 @@ CFLAGS = -I $(IDIR)
 _DEPS = 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = chess.o bitboard.o main.o
+_OBJ = chess.o bitboard.o board.o moveGenerator.o test.o main.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)

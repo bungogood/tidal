@@ -1,6 +1,7 @@
 #pragma once
 
-#define start_fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
+#define empty_fen "8/8/8/8/8/8/8/8 w - - 0 1"
+#define start_fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define tricky_fen "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "
 #define killer_fen "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1"
 #define cmk_fen "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9"
@@ -22,13 +23,17 @@ extern const char* player_str[];
 extern const char* sq_str[];
 extern const char* ascii_piece;
 
-enum File { FA,FB,FC,FD,FE,FF,FG,FH };
-
 enum Player   { black, white, both };
-enum Castling { wk = 16, wq = 8, bk = 2, bq = 1, no_castle = 0 };
+enum Castling { wk = 8, wq = 4, bk = 2, bq = 1, no_castle = 0 };
 enum Piece    { P, N, B, R, Q, K, p, n, b, r, q, k };
 
+typedef struct Moves {
+    int moves[256];
+    int count;
+} Moves;
+
 typedef struct Board {
+    Moves moves;
     U64 bb[12]; // piece bitboards
     U64 occ[3];
     int isWhite;
@@ -39,7 +44,10 @@ typedef struct Board {
 } Board;
 
 void to_fen(char* fen, const Board* board);
-Board* from_fen(const char* fen);
+void from_fen(const char* fen, Board* board);
+Board* create_from_fen(const char* fen);
+void to_san(char* san, int move, const Board* board);
+int from_san(const char* san, const Board* board);
 
 const void print_bb(const U64 bb);
 const void print_board(const Board* board);
