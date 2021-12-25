@@ -4,16 +4,17 @@
 #include <bitboard.h>
 
 /*
-          binary move bits                               hexidecimal constants
+    binary move bits                                   shift  hexidecimal constants
     
-    0000 0000 0000 0000 0011 1111    source square       0x3f
-    0000 0000 0000 1111 1100 0000    target square       0xfc0
-    0000 0000 1111 0000 0000 0000    piece               0xf000
-    0000 1111 0000 0000 0000 0000    promoted piece      0xf0000
-    0001 0000 0000 0000 0000 0000    capture flag        0x100000
-    0010 0000 0000 0000 0000 0000    double push flag    0x200000
-    0100 0000 0000 0000 0000 0000    enpassant flag      0x400000
-    1000 0000 0000 0000 0000 0000    castling flag       0x800000
+    0000 0000 0000 0000 0000 0011 1111  source square     0   0x3f
+    0000 0000 0000 0000 1111 1100 0000  target square     6   0xfc0
+    0000 0000 0000 1111 0000 0000 0000  piece             12  0xf000
+    0000 0000 1111 0000 0000 0000 0000  promoted piece    16  0xf0000
+    0000 1111 0000 0000 0000 0000 0000  captured piece    20  0xf00000
+    0001 0000 0000 0000 0000 0000 0000  capture flag      24  0x1000000
+    0010 0000 0000 0000 0000 0000 0000  double push flag  25  0x2000000
+    0100 0000 0000 0000 0000 0000 0000  enpassant flag    26  0x4000000
+    1000 0000 0000 0000 0000 0000 0000  castling flag     27  0x8000000
 */
 
 #define encode_move(source, target, piece, promoted, capture, double, enpassant, castling) \
@@ -21,56 +22,66 @@
     (target << 6) |     \
     (piece << 12) |     \
     (promoted << 16) |  \
-    (capture << 20) |   \
-    (double << 21) |    \
-    (enpassant << 22) | \
-    (castling << 23) \
+    (capture << 24) |   \
+    (double << 25) |    \
+    (enpassant << 26) | \
+    (castling << 27) \
 
 #define create_quite(source, target, piece) \
     (source) |          \
     (target << 6) |     \
     (piece << 12)     \
 
-#define create_capture(source, target, piece) \
+#define create_capture(source, target, piece, captured) \
     (source) |          \
     (target << 6) |     \
     (piece << 12) |     \
-    (1 << 20) \
+    (captured << 20) |   \
+    (1 << 24) \
 
-#define create_enPassant(source, target, piece) \
+#define create_enPassant(source, target, piece, captured) \
     (source) |          \
     (target << 6) |     \
     (piece << 12) |     \
-    (1 << 20) | \
-    (1 << 22) \
+    (captured << 20) |   \
+    (1 << 24) | \
+    (1 << 26) \
+
+#define create_promtion_capture(source, target, piece, promoted, captured) \
+    (source) |          \
+    (target << 6) |     \
+    (piece << 12) |     \
+    (promoted << 16) |  \
+    (captured << 20) |   \
+    (1 << 24) \
 
 #define create_double(source, target, piece) \
     (source) |          \
     (target << 6) |     \
     (piece << 12) |     \
-    (1 << 21) \
+    (1 << 25) \
 
-#define create_promtion(source, target, piece, promoted, capture) \
+#define create_promtion(source, target, piece, promoted) \
     (source) |          \
     (target << 6) |     \
     (piece << 12) |     \
-    (promoted << 16) |  \
-    (capture << 20) \
+    (promoted << 16) \
 
 #define create_castle(source, target, piece) \
     (source) |          \
     (target << 6) |     \
     (piece << 12) |     \
-    (1 << 23) \
+    (1 << 27) \
 
 #define get_move_source(move) (move & 0x3f)
 #define get_move_target(move) ((move & 0xfc0) >> 6)
 #define get_move_piece(move) ((move & 0xf000) >> 12)
 #define get_move_promoted(move) ((move & 0xf0000) >> 16)
-#define get_move_capture(move) (move & 0x100000)
-#define get_move_double(move) (move & 0x200000)
-#define get_move_enpassant(move) (move & 0x400000)
-#define get_move_castling(move) (move & 0x800000)
+#define get_move_captured(move) ((move & 0xf00000) >> 20)
+#define get_move_capture(move) (move & 0x1000000)
+#define get_move_double(move) (move & 0x2000000)
+#define get_move_enpassant(move) (move & 0x4000000)
+#define get_move_castling(move) (move & 0x8000000)
 
 extern Moves moves;
 

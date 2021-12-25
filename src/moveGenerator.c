@@ -109,6 +109,7 @@ void print_san(int move, Board* board) {
 
 void print_moves(Board* board) {
     Moves* moves = &board->moves;
+    char str[8];
     int captures  = 0;
     int castles   = 0;
     int doubles   = 0;
@@ -120,9 +121,10 @@ void print_moves(Board* board) {
         if (get_move_double(moves->moves[i])) doubles++;
         if (get_move_enpassant(moves->moves[i])) enPassant++;
         if (get_move_promoted(moves->moves[i])) promotion++;
-        print_san(moves->moves[i], board);
+        to_lan(str, moves->moves[i]);
+        printf("%s ", str);
     }
-    printf("\n");
+    printf("\n\n");
     printf("\t(%d captures)", captures);
     printf("\t(%d castles)", castles);
     printf("\t(%d doubles)", doubles);
@@ -136,12 +138,25 @@ static inline void add_move(Moves *move_list, int move) {
     move_list->count++;
 }
 
-// redo occ
+typedef int Piece;
+
+static inline Piece get_captured(Board* board, int sq, int start, int end) {
+    for (int piece = start; piece <= end; piece++) {
+        if (get_bit(sq, board->bb[piece])) return piece;
+    }
+    return none;
+}
+
 void generate_moves(Board* board) {
+    
+    int start, end;
+    if (board->isWhite) start = p, end = k;
+    else start = P, end = K;
+
     Moves* moves = &board->moves;
     moves->count = 0;
     // define source & target squares
-    int src, dest;
+    int src, dest, captured;
     
     // define current piece's bitboard copy & it's attacks
     U64 bitboard, attacks;
@@ -163,10 +178,10 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, board->occ[both])) {
                         // pawn promotion
                         if (src >= a7 && src <= h7) {
-                            add_move(moves, create_promtion(src,dest,P,Q,false));
-                            add_move(moves, create_promtion(src,dest,P,R,false));
-                            add_move(moves, create_promtion(src,dest,P,B,false));
-                            add_move(moves, create_promtion(src,dest,P,N,false));
+                            add_move(moves, create_promtion(src,dest,P,Q));
+                            add_move(moves, create_promtion(src,dest,P,R));
+                            add_move(moves, create_promtion(src,dest,P,B));
+                            add_move(moves, create_promtion(src,dest,P,N));
                         } else {
                             add_move(moves, create_quite(src,dest,P));
                             if ((src >= a2 && src <= h2) && !get_bit(dest+8, board->occ[both])) {
@@ -183,14 +198,14 @@ void generate_moves(Board* board) {
                         
                         // init target square
                         dest = pop_LSB(&attacks);
-
+                        captured = get_captured(board, dest, start, end);
                         if (src >= a7 && src <= h7) {
-                            add_move(moves, create_promtion(src,dest,P,Q,true));
-                            add_move(moves, create_promtion(src,dest,P,R,true));
-                            add_move(moves, create_promtion(src,dest,P,B,true));
-                            add_move(moves, create_promtion(src,dest,P,N,true));
+                            add_move(moves, create_promtion_capture(src,dest,P,Q,captured));
+                            add_move(moves, create_promtion_capture(src,dest,P,R,captured));
+                            add_move(moves, create_promtion_capture(src,dest,P,B,captured));
+                            add_move(moves, create_promtion_capture(src,dest,P,N,captured));
                         } else {
-                            add_move(moves, create_capture(src,dest,P));
+                            add_move(moves, create_capture(src,dest,P,captured));
                         }
                     }
                     
@@ -201,7 +216,7 @@ void generate_moves(Board* board) {
                         // make sure board->enPassant capture available
                         if (enpassant_attacks) {
                             dest = pop_LSB(&enpassant_attacks);
-                            add_move(moves, create_enPassant(src,dest,P));
+                            add_move(moves, create_enPassant(src,dest,P,p));
                         }
                     }
                 }
@@ -245,10 +260,10 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, board->occ[both])) {
                         // pawn promotion
                         if (src >= a2 && src <= h2) {
-                            add_move(moves, create_promtion(src,dest,p,q,false));
-                            add_move(moves, create_promtion(src,dest,p,r,false));
-                            add_move(moves, create_promtion(src,dest,p,b,false));
-                            add_move(moves, create_promtion(src,dest,p,n,false));
+                            add_move(moves, create_promtion(src,dest,p,q));
+                            add_move(moves, create_promtion(src,dest,p,r));
+                            add_move(moves, create_promtion(src,dest,p,b));
+                            add_move(moves, create_promtion(src,dest,p,n));
                         } else {
                             add_move(moves, create_quite(src,dest,p));
                             if ((src >= a7 && src <= h7) && !get_bit(dest-8, board->occ[both])) {
@@ -264,15 +279,15 @@ void generate_moves(Board* board) {
                     while (attacks) {
                         // init target square
                         dest = pop_LSB(&attacks);
-                        
+                        captured = get_captured(board, dest, start, end);
                         // pawn promotion
                         if (src >= a2 && src <= h2) {
-                            add_move(moves, create_promtion(src,dest,p,q,true));
-                            add_move(moves, create_promtion(src,dest,p,r,true));
-                            add_move(moves, create_promtion(src,dest,p,b,true));
-                            add_move(moves, create_promtion(src,dest,p,n,true));
+                            add_move(moves, create_promtion_capture(src,dest,p,q,captured));
+                            add_move(moves, create_promtion_capture(src,dest,p,r,captured));
+                            add_move(moves, create_promtion_capture(src,dest,p,b,captured));
+                            add_move(moves, create_promtion_capture(src,dest,p,n,captured));
                         } else {
-                            add_move(moves, create_capture(src,dest,p));
+                            add_move(moves, create_capture(src,dest,p,captured));
                         }
                     }
                     
@@ -284,7 +299,7 @@ void generate_moves(Board* board) {
                         // make sure board->enPassant capture available
                         if (enpassant_attacks) {
                             dest = pop_LSB(&enpassant_attacks);
-                            add_move(moves, create_enPassant(src,dest,p));
+                            add_move(moves, create_enPassant(src,dest,p,P));
                         }
                     }
                     // pop ls1b from piece bitboard copy
@@ -336,7 +351,8 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, ((board->isWhite == white) ? board->occ[black] : board->occ[white]))){
                         add_move(moves, create_quite(src,dest,piece));
                     } else {
-                        add_move(moves, create_capture(src,dest,piece));
+                        captured = get_captured(board, dest, start, end);
+                        add_move(moves, create_capture(src,dest,piece,captured));
                     }
                 }
             }
@@ -361,7 +377,8 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, ((board->isWhite == white) ? board->occ[black] : board->occ[white]))) {
                         add_move(moves, create_quite(src,dest,piece));
                     } else {
-                        add_move(moves, create_capture(src,dest,piece));
+                        captured = get_captured(board, dest, start, end);
+                        add_move(moves, create_capture(src,dest,piece,captured));
                     }
                 }
             }
@@ -386,7 +403,8 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, ((board->isWhite == white) ? board->occ[black] : board->occ[white]))) {
                         add_move(moves, create_quite(src,dest,piece));
                     } else {
-                        add_move(moves, create_capture(src,dest,piece));
+                        captured = get_captured(board, dest, start, end);
+                        add_move(moves, create_capture(src,dest,piece,captured));
                     }
                 }
             }
@@ -411,7 +429,8 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, ((board->isWhite == white) ? board->occ[black] : board->occ[white]))) {
                         add_move(moves, create_quite(src,dest,piece));
                     } else {
-                        add_move(moves, create_capture(src,dest,piece));
+                        captured = get_captured(board, dest, start, end);
+                        add_move(moves, create_capture(src,dest,piece,captured));
                     }
                 }
             }
@@ -436,7 +455,8 @@ void generate_moves(Board* board) {
                     if (!get_bit(dest, ((board->isWhite == white) ? board->occ[black] : board->occ[white]))) {
                         add_move(moves, create_quite(src,dest,piece));
                     } else {
-                        add_move(moves, create_capture(src,dest,piece));
+                        captured = get_captured(board, dest, start, end);
+                        add_move(moves, create_capture(src,dest,piece,captured));
                     }
                 }
             }
@@ -452,13 +472,25 @@ void generate_legal(Board* board) {
     U64* king = board->isWhite ? &copy.bb[K] : &copy.bb[k];
     int oldCount = board->moves.count;
     Moves* moves = &board->moves;
-    int tmp = getLSB(*king);
     board->moves.count = 0;
     for (int i = 0; i < oldCount; i++) {
         copy_board(&copy, board);
         make_move(&copy, moves->moves[i]);
         if (!isSquareAttacked(getLSB(*king), &copy, !board->isWhite)) {
             add_move(moves, moves->moves[i]);
+        }
+    }
+}
+
+void generate_captures(Board* board) {
+    generate_legal(board);
+
+    int oldCount = board->moves.count;
+    board->moves.count = 0;
+
+    for (int i = 0; i < oldCount; i++) {
+        if (get_move_capture(board->moves.moves[i])) {
+            add_move(&board->moves, board->moves.moves[i]);
         }
     }
 }

@@ -44,18 +44,9 @@ void make_move(Board* board, int move) {
                 pop_bit(dest+8, *eocc);
             }
         } else {
-            // loop over all enemy
-            int start, end;
-            if (board->isWhite) start = p, end = k;
-            else start = P, end = K;
-
-            for (int attacking = start; attacking <= end; attacking++) {
-                if (get_bit(dest, board->bb[attacking])) {
-                    pop_bit(dest, board->bb[attacking]);
-                    pop_bit(dest, *eocc);
-                    break;
-                }
-            }
+            int captured = get_move_captured(move);
+            pop_bit(dest, board->bb[captured]);
+            pop_bit(dest, *eocc);
         }
     }
 
@@ -96,9 +87,6 @@ void make_move(Board* board, int move) {
     
     board->isWhite = !board->isWhite;
     board->fullMove++;
-
-    // board->occ[white] = board->bb[K] | board->bb[Q] | board->bb[N] | board->bb[R] | board->bb[B] | board->bb[P];
-    // board->occ[black] = board->bb[k] | board->bb[q] | board->bb[r] | board->bb[b] | board->bb[n] | board->bb[p];
 
     board->occ[both] = board->occ[black] | board->occ[white];
 }
