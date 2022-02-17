@@ -10,7 +10,7 @@ CFLAGS = -I $(IDIR)
 _DEPS = 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = chess.o bitboard.o board.o moveGenerator.o test.o main.o
+_OBJ = chess.o bitboard.o board.o moveGenerator.o test.o solver.o main.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
@@ -21,6 +21,9 @@ chess: $(OBJ)
 
 magic: 
 	gcc -o magic src/magic.c -I include
+
+online: 
+	gcc -o online src/online.c
 
 .PHONY: clean
 
