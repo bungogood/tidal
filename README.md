@@ -1,14 +1,18 @@
-# C Chess
+# Tidal
+
+C Chess engine
+
+![Build](https://github.com/Bungogood/tidal/actions/workflows/make.yml/badge.svg)
 
 For chess, b≈35, m ≈ 100 (average ≈ 40) for "reasonable" games
 - exact solution completely infeasible!
 - would like to eliminate (large) parts of game tree  
-$35^{40}=5.791*10^{61}$  
-$35^{100}=2.552*10^{154}$  
-$b\approx35$
+$$35^{40}=5.791*10^{61}$$
+$$35^{100}=2.552*10^{154}$$
+$b \approx 35$
 number of moves
-$m\approx100$
-$average\approx40$
+$m \approx 100$
+$average \approx 40$
 
 
 ## Installation
@@ -92,3 +96,5 @@ change sort
 - [Negamax](https://en.wikipedia.org/wiki/Negamax)
 ### Chess programming wiki:
 - [Move ordering](https://www.chessprogramming.org/Move_Ordering)
+
+http://wbec-ridderkerk.nl/html/UCIProtocol.html
