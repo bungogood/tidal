@@ -7,6 +7,7 @@
 #define cmk_fen "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9"
 
 typedef unsigned long long U64;
+typedef int Move;
 
 enum Square {
     a1,b1,c1,d1,e1,f1,g1,h1,
@@ -34,6 +35,7 @@ typedef struct Moves {
 
 typedef struct Board {
     Moves moves;
+    U64 hash;
     U64 bb[12]; // piece bitboards
     U64 occ[3];
     int isWhite;
@@ -46,7 +48,8 @@ typedef struct Board {
 void to_fen(char* fen, const Board* board);
 void from_fen(const char* fen, Board* board);
 Board* create_from_fen(const char* fen);
-void to_san(char* san, int move, const Board* board);
+void to_lan(char* str, const int move);
+void to_san(char* san, const int move, const Board* board);
 int from_san(const char* san, const Board* board);
 
 const void print_bb(const U64 bb);
