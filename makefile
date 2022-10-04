@@ -1,31 +1,33 @@
-IDIR = include
-ODIR = .obj
-SDIR = src
+SRC_DIR := src
+BIN_DIR := .
+LIB_DIR := lib
+INC_DIR := inc
+OBJ_DIR := .obj
 
-LIBS = 
+TARGET  := $(BIN_DIR)/chess
 
 CC = gcc
-CFLAGS = -I $(IDIR)
+CCFLAGS = -c -g -Wall
 
-_DEPS = 
-DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
+SOURCES := $(shell find $(SRC_DIR) -name "*.c")
+OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SOURCES))
+HEADERS := $(shell find $(INC_DIR) -name "*.h")
+# sort is just to remove duplicates. Not necessary, but tidy
+HEADERDIRS := $(sort $(dir $(HEADERS)))
+INCLUDEFLAGS := $(addprefix -I,$(HEADERDIRS))
 
-_OBJ = chess.o bitboard.o board.o moveGenerator.o test.o solver.o main.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+.PHONY: all clean
 
-$(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+all: $(TARGET)
 
-chess: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(@D)
+	@$(CC) $< $(INCLUDEFLAGS) -o $@ $(CCFLAGS)
 
-magic: 
-	gcc -o magic src/magic.c -I include
-
-online: 
-	gcc -o online src/online.c
-
-.PHONY: clean
+$(TARGET): $(OBJECTS)
+	@mkdir -p $(@D)
+	$(CC) $^ -o $@
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(IDIR)/*~ 
+	rm -f $(OBJECTS) $(TARGET)
+
